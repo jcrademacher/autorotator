@@ -36,11 +36,20 @@ STM23IP::STM23IP(std::string ip_address, size_t port) {
         exit(EXIT_FAILURE); 
     } 
 
+    memset(&servaddr,0,sizeof(servaddr));
+
     // Filling server information 
     servaddr.sin_family = AF_INET; 
     servaddr.sin_port = htons(port); 
+    servaddr.sin_addr.s_addr = inet_addr(ip_address.c_str());
     // inet aton converts IP c string into network ordered IP address
-    inet_aton(ip_address.c_str(), &servaddr.sin_addr); 
+    // int retval = inet_aton(ip_address.c_str(), &servaddr.sin_addr); 
+    // std::cout << boost::format("Inet aton retval %i") % retval << std::endl;
+
+    if(connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0) {
+        perror("Could not connect");
+        exit(EXIT_FAILURE);
+    } 
     
     std::string cmd = "RV";
     uint8_t* cmd_to_send;
@@ -50,7 +59,7 @@ STM23IP::STM23IP(std::string ip_address, size_t port) {
     
     // get revision number, check comms with motor
     ssize_t bytes_sent;
-    if((bytes_sent = sendto(sockfd,cmd_to_send,cmd_size,0, (const struct sockaddr *) &servaddr,sizeof(servaddr))) < 0) {
+    if((bytes_sent = send(sockfd,cmd_to_send,cmd_size,0)) < 0) {
         perror("Socket send failure");
         exit(EXIT_FAILURE); 
     }
@@ -75,7 +84,7 @@ STM23IP::STM23IP(std::string ip_address, size_t port) {
 
     float firmware_version = ((float)stoi(resp.substr(3))) / 100.0;
 
-    std::cout << boost::format("STM23IP Connected. Firmware version: %f") % firmware_version << std::endl;
+    std::cout << boost::format("STM23IP Connected. Firmware version: %3.2f") % firmware_version << std::endl;
 }
 
 STM23IP::~STM23IP() {

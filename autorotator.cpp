@@ -7,7 +7,6 @@
 
 #define MOTOR_IP "192.168.10.2"
 #define PORT    43333 
-#define MAXLINE 1024 
 
 #define PULLEY_RATIO 0.5
 
