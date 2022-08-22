@@ -5,7 +5,7 @@
 
 #include "stm23ip.hpp"
 
-#define MOTOR_IP "192.168.10.10"
+#define MOTOR_IP "192.168.10.2"
 #define PORT    43333 
 #define MAXLINE 1024 
 
