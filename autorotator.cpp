@@ -3,15 +3,6 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <unistd.h> 
-#include <string> 
-#include <sys/types.h> 
-#include <sys/socket.h> 
-#include <arpa/inet.h> 
-#include <netinet/in.h> 
-
 #include "stm23ip.hpp"
 
 #define MOTOR_IP "192.168.10.10"
@@ -44,17 +35,10 @@ int main(int argc, char *argv[]) {
     }
 
     
-    STM23IP motor(MOTOR_IP, PORT);
+    STM23IP *motor = new STM23IP(MOTOR_IP, PORT);
         
-        
-    // int n;
-    // socklen_t len;
-        
-    // ssize_t bytes_sent = sendto(sockfd, (const char *)hello.c_str(), hello.length(), 
-    //     MSG_CONFIRM, (const struct sockaddr *) &servaddr,  
-    //         sizeof(servaddr)); 
 
-    // std::cout << boost::format("Bytes sent: %s ...") % bytes_sent << std::endl;
+    //std::cout << boost::format("Bytes sent: %s ...") % bytes_sent << std::endl;
 
     // close(sockfd); 
     return 0; 
