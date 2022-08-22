@@ -50,7 +50,7 @@ STM23IP::STM23IP(std::string ip_address, size_t port) {
     
     // get revision number, check comms with motor
     ssize_t bytes_sent;
-    if((bytes_sent = sendto(sockfd,cmd_to_send,cmd_size,MSG_CONFIRM, (const struct sockaddr *) &servaddr,sizeof(servaddr))) < 0) {
+    if((bytes_sent = sendto(sockfd,cmd_to_send,cmd_size,0, (const struct sockaddr *) &servaddr,sizeof(servaddr))) < 0) {
         perror("Socket send failure");
         exit(EXIT_FAILURE); 
     }
@@ -91,7 +91,7 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, cons
     // get revision number, check comms with motor
     ssize_t bytes_sent;
     int attempts = 0;
-    while((bytes_sent = sendto(sockfd,cmd_to_send,cmd_size,MSG_CONFIRM, (const struct sockaddr *) &servaddr,sizeof(servaddr))) < 0 && attempts <= num_retries) {
+    while((bytes_sent = sendto(sockfd,cmd_to_send,cmd_size,0, (const struct sockaddr *) &servaddr,sizeof(servaddr))) < 0 && attempts <= num_retries) {
         ++attempts;
     }
     
