@@ -1,7 +1,7 @@
 # Autorotator
 
 
-## Installation Prerequisites
+## Installation
 
 [Brew](brew.sh) is strongly encouraged for use of this software on MacOSX. 
 
