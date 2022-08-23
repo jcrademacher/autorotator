@@ -9,6 +9,8 @@
 #include <netinet/in.h> 
 
 #define MAX_RECV_BUF_SIZE 10
+#define UDP_MOTOR_PORT 7775
+#define TCP_MOTOR_PORT 7776
 
 typedef enum {
     STM23IP_OK = 0,
@@ -18,9 +20,13 @@ typedef enum {
 
 class STM23IP {
     public:
-        STM23IP(std::string ip_address, size_t port);
+        STM23IP(std::string ip_address);
 
         STM23IP_Status_t send_recv_cmd(std::string cmd, std::string& resp, const int num_retries);
+        STM23IP_Status_t send_cmd(std::string cmd, const int num_retries);
+        STM23IP_Status_t enable();
+        STM23IP_Status_t disable();
+        STM23IP_Status_t alarm_reset();
 
         ~STM23IP();
 

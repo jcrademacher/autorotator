@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     }
 
     
-    STM23IP *motor = new STM23IP(MOTOR_IP, PORT);
+    STM23IP *motor = new STM23IP(MOTOR_IP);
         
 
     //std::cout << boost::format("Bytes sent: %s ...") % bytes_sent << std::endl;
