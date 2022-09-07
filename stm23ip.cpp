@@ -140,13 +140,13 @@ STM23IP_Status_t STM23IP::send_cmd(std::string cmd, const int num_retries=0) {
 }
 
 STM23IP_Status_t STM23IP::enable() {
-    return send_cmd("ME");
+    return this->send_cmd("ME");
 }
 
 STM23IP_Status_t STM23IP::disable() {
-    return send_cmd("MD");
+    return this->send_cmd("MD");
 }
 
 STM23IP_Status_t STM23IP::alarm_reset() {
-    return send_cmd("AR");
+    return this->send_cmd("AR");
 }
