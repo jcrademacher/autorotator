@@ -10,8 +10,6 @@
 #include <uhd/utils/static.hpp>
 #include <uhd/utils/thread.hpp>
 
-#include "stm23ip.hpp"
-
 #define MOTOR_IP "192.168.10.2"
 #define PORT    43333 
 
@@ -44,13 +42,15 @@ int _main(int argc, char *argv[]) {
 
     int start_angle, end_angle;
     double angle_step;
+    bool interactive;
     // clang-format off
     desc.add_options()
-        ("help", "help message")
-        ("exec", po::value<std::string>(&exec)->default_value("?"), exec_help.c_str())
+        ("help,h", "help message")
+        ("exec,e", po::value<std::string>(&exec)->default_value("?"), exec_help.c_str())
+        ("inter,i",po::bool_switch(&interactive)->default_value(false))
         ("start-angle", po::value<int>(&start_angle)->default_value(-90), "angle in degrees to begin the rotations at")
         ("end-angle", po::value<int>(&end_angle)->default_value(90), "angle in degrees to end the rotations at")
-        ("angle-step", po::value<double>(&angle_step)->default_value(1.8), "angle in degrees to step sweeping from start-angle to end-angle")
+        ("step", po::value<double>(&angle_step)->default_value(1.8), "angle in degrees to step sweeping from start-angle to end-angle")
     ;
     // clang-format on
     po::variables_map vm;
@@ -65,13 +65,10 @@ int _main(int argc, char *argv[]) {
                   << std::endl;
         return ~0;
     }
-    std::string args;
-    uhd::usrp::multi_usrp::sptr usrp = uhd::usrp::multi_usrp::make(args);
 
     std::cout << "Connecting to motor..." << std::endl;
     //STM23IP* motor = new STM23IP(MOTOR_IP);
 
-    double angle;
     size_t angle_string_location = exec.find(ANGLE_FLAG);
     std::string exec_to_call;
     std::ostringstream angle_str;
@@ -79,24 +76,42 @@ int _main(int argc, char *argv[]) {
     int ipart;
     int fpart;
 
-    for(angle = start_angle; angle <= end_angle; angle += angle_step) {
-        ipart = ((int)round(angle*10.0))/10;
-        fpart = abs((int)(round((angle - ipart)*10.0)));
+    float angle;
+    bool input_failed;
 
-        angle_str << boost::format("%d,%1d") % ipart % fpart;
-        exec_to_call = exec;
-        exec_to_call.replace(angle_string_location, std::string::npos, angle_str.str());
-
-        //std::cout << boost::format("%.1f") % angle << boost::format(" | %s") % angle_str.str() << std::endl;
-        system(exec_to_call.c_str());
-
-        angle_str.str("");
-        angle_str.clear();
-    }
+    while(true) {
+        input_failed = false;
+        std::cout << "Enter an angle: ";
         
+        if(!(std::cin >> angle)) {
+            std::cout << "Please enter numbers only" << std::endl;
+            std::cin.clear();
+		    std::cin.ignore(10000, '\n');
 
-    //std::cout << boost::format("Bytes sent: %s ...") % bytes_sent << std::endl;
+            input_failed = true;
+        }
 
-    // close(sockfd); 
+        if(angle > 90 || angle < -90) {
+            std::cout << "Angle must be between -90 and +90 degrees" << std::endl;
+            input_failed = true;
+        }
+
+        if(!input_failed) {
+            std::cout << boost::format("Positioning autorotator to %.1f degrees...") % angle << std::endl;
+            ipart = ((int)round(angle*10.0))/10;
+            fpart = abs((int)(round((angle - ipart)*10.0)));
+
+            angle_str << boost::format("%d,%1d") % ipart % fpart;
+            exec_to_call = exec;
+            exec_to_call.replace(angle_string_location, std::string::npos, angle_str.str());
+
+            //std::cout << boost::format("%.1f") % angle << boost::format(" | %s") % angle_str.str() << std::endl;
+            system(exec_to_call.c_str());
+
+            angle_str.str("");
+            angle_str.clear();
+        }
+    }
+
     return 0; 
 }
