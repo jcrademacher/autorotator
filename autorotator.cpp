@@ -9,8 +9,11 @@
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/utils/static.hpp>
 #include <uhd/utils/thread.hpp>
+#include <signal.h>
 
-#define MOTOR_IP "192.168.10.2"
+#include "stm23ip.hpp"
+
+#define MOTOR_IP "192.168.1.20"
 #define PORT    43333 
 
 #define PULLEY_RATIO 0.5
@@ -19,7 +22,9 @@
 
 namespace po = boost::program_options;
 
+// function headers
 static int _main(int argc, char *argv[]);
+void signal_callback_handler(int signum);
 
 int main(int argc, char *argv[]) {                                                      
     try {                                                     
@@ -33,6 +38,8 @@ int main(int argc, char *argv[]) {
 }
 
 int _main(int argc, char *argv[]) { 
+    signal(SIGINT, signal_callback_handler);
+
      // setup the program options
     po::options_description desc("Allowed options");
     std::string exec;
@@ -67,7 +74,7 @@ int _main(int argc, char *argv[]) {
     }
 
     std::cout << "Connecting to motor..." << std::endl;
-    //STM23IP* motor = new STM23IP(MOTOR_IP);
+    STM23IP* motor = new STM23IP(MOTOR_IP);
 
     size_t angle_string_location = exec.find(ANGLE_FLAG);
     std::string exec_to_call;
@@ -114,4 +121,10 @@ int _main(int argc, char *argv[]) {
     }
 
     return 0; 
+}
+
+void signal_callback_handler(int signum) {
+   std::cout << "Caught signal " << signum << std::endl;
+   // Terminate program
+   exit(signum);
 }

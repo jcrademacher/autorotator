@@ -36,14 +36,27 @@ STM23IP::STM23IP(std::string ip_address) {
         exit(EXIT_FAILURE); 
     } 
 
+    struct sockaddr_in servaddr; 
+
+    memset(&cliaddr,0,sizeof(cliaddr));
     memset(&servaddr,0,sizeof(servaddr));
 
-    // Filling server information 
-    servaddr.sin_family = AF_INET; 
-    servaddr.sin_port = htons(UDP_MOTOR_PORT); 
-    servaddr.sin_addr.s_addr = inet_addr(ip_address.c_str());
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(BIND_PORT);
+    servaddr.sin_addr.s_addr = INADDR_ANY;
 
-    if(connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0) {
+    // Bind the socket with the server address 
+    if ( bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0 ) { 
+        perror("bind failed"); 
+        exit(EXIT_FAILURE); 
+    } 
+
+    // Filling client information 
+    cliaddr.sin_family = AF_INET; 
+    cliaddr.sin_port = htons(UDP_MOTOR_PORT); 
+    cliaddr.sin_addr.s_addr = inet_addr(ip_address.c_str());
+
+    if(connect(sockfd,(struct sockaddr *)&cliaddr,sizeof(cliaddr)) < 0) {
         perror("Could not connect");
         exit(EXIT_FAILURE);
     } 
@@ -71,7 +84,7 @@ STM23IP::STM23IP(std::string ip_address) {
 
     setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 
-    if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&servaddr,(socklen_t *)&addr_len)) < 0) {
+    if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&cliaddr,(socklen_t *)&addr_len)) < 0) {
         perror("Receive timeout, failed to initialize motor");
         exit(EXIT_FAILURE);
     }
@@ -109,7 +122,7 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, cons
     int bytes_recvd, addr_len;
     uint8_t recv_buf[MAX_RECV_BUF_SIZE];
 
-    if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&servaddr,(socklen_t *)&addr_len)) < 0) {
+    if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&cliaddr,(socklen_t *)&addr_len)) < 0) {
         perror("Receive timeout, failed to initialize motor");
         return STM23IP_TIMEOUT;
     }

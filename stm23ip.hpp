@@ -12,6 +12,8 @@
 #define UDP_MOTOR_PORT 7775
 #define TCP_MOTOR_PORT 7776
 
+#define BIND_PORT 7777
+
 typedef enum {
     STM23IP_OK = 0,
     STM23IP_TIMEOUT = 1,
@@ -32,7 +34,7 @@ class STM23IP {
 
     private:
         int sockfd;
-        struct sockaddr_in servaddr; 
+        struct sockaddr_in cliaddr; 
 
         static void str_to_eSCL(std::string cmd, uint8_t*& eSCL_cmd, size_t &eSCL_cmd_size);
         static void eSCL_to_str(std::string& response, uint8_t* eSCL_resp, size_t eSCL_resp_size);
