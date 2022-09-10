@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 set(TARGET_NAME autorotator)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_FLAGS "-pthread")
 
 set(EXEC rx_tx_samples_to_file_autorotate)
 
