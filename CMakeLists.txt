@@ -7,7 +7,7 @@ set(EXEC rx_tx_samples_to_file_autorotate)
 
 project(${TARGET_NAME})
 
-find_package(Boost COMPONENTS program_options REQUIRED)
+find_package(Boost COMPONENTS program_options filesystem REQUIRED)
 find_package(UHD)
 
 include_directories(${UHD_INCLUDE_DIRS})
