@@ -20,6 +20,12 @@
 
 #define ANGLE_FLAG "?"
 
+#define DEFAULT_EG_CMD "EG200"
+#define DEFAULT_AC_CMD "AC1"
+#define DEFAULT_DE_CMD "DE1"
+#define DEFAULT_VE_CMD "VE0.25"
+#define DEFAULT_SP_CMD "SP0"
+
 namespace po = boost::program_options;
 
 // function headers
@@ -73,8 +79,24 @@ int _main(int argc, char *argv[]) {
         return ~0;
     }
 
+    STM23IP_Status_t status = STM23IP_ERROR;
+    std::string resp;
+
     std::cout << "Connecting to motor..." << std::endl;
     STM23IP* motor = new STM23IP(MOTOR_IP);
+
+    // initialize electronic gearing, position, and speeds
+    while(status != STM23IP_OK) {
+        motor->send_cmd(DEFAULT_EG_CMD);
+        status = motor->send_recv_cmd("EG", resp);  // check if EG successful
+    }
+        
+    status = motor->send_cmd("SP0");
+
+    // WARNING: CHANGING THESE PARAMETERS AND OPERATING THE MOTOR MAY CAUSE PERMANENT MECHANICAL DAMAGE TO THE AUTOROTATOR
+    status = motor->send_cmd("AC1");
+    status = motor->send_cmd("DE1");
+    status = motor->send_cmd("VE0.25");
 
     size_t angle_string_location = exec.find(ANGLE_FLAG);
     std::string exec_to_call;
@@ -87,8 +109,6 @@ int _main(int argc, char *argv[]) {
     std::string::size_type sz;
     float angle;
     bool is_SCL_cmd, input_failed, contains_param;
-
-    STM23IP_Status_t status;
 
     while(true) {
         input_failed = false;
@@ -140,6 +160,9 @@ int _main(int argc, char *argv[]) {
 
             if(status == STM23IP_OK) {
                 std::cout << "eSCL command sent" << std::endl;
+            }
+            else {
+                std::cout << "eSCL command could not be sent" << std::endl;
             }
 
             if(resp.length() > 0) {

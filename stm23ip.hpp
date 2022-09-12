@@ -14,8 +14,6 @@
 
 #define BIND_PORT 7777
 
-#define DEFAULT_EG 200
-
 typedef enum {
     STM23IP_OK = 0,
     STM23IP_TIMEOUT = 1,
@@ -31,6 +29,8 @@ class STM23IP {
         STM23IP_Status_t enable();
         STM23IP_Status_t disable();
         STM23IP_Status_t alarm_reset();
+
+        static void eSCL_read_code(std::string cmd, long code);
 
         ~STM23IP();
 
