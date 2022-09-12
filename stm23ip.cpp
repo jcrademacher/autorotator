@@ -79,7 +79,7 @@ STM23IP::STM23IP(std::string ip_address) {
 
     struct timeval timeout;
 
-    timeout.tv_sec = 10;
+    timeout.tv_sec = 1;
     timeout.tv_usec = 0;
 
     setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
@@ -101,16 +101,17 @@ STM23IP::~STM23IP() {
     close(sockfd);
 }
 
-STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, const int num_retries=0) {
+STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, const int num_retries) {
     uint8_t* cmd_to_send;
     size_t cmd_size;
     
     str_to_eSCL(cmd,cmd_to_send,cmd_size);
     
     // get revision number, check comms with motor
-    ssize_t bytes_sent;
+    ssize_t bytes_sent = -1;
     int attempts = 0;
-    while((bytes_sent = send(sockfd,cmd_to_send,cmd_size,0)) < 0 && attempts <= num_retries) {
+    while(bytes_sent < 0 && attempts <= num_retries) {
+        bytes_sent = send(sockfd,cmd_to_send,cmd_size,0);
         ++attempts;
     }
     
@@ -123,7 +124,7 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, cons
     uint8_t recv_buf[MAX_RECV_BUF_SIZE];
 
     if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&cliaddr,(socklen_t *)&addr_len)) < 0) {
-        perror("Receive timeout, failed to initialize motor");
+        perror("Receive timeout");
         return STM23IP_TIMEOUT;
     }
 
@@ -131,16 +132,17 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, cons
     return STM23IP_OK;
 }
 
-STM23IP_Status_t STM23IP::send_cmd(std::string cmd, const int num_retries=0) {
+STM23IP_Status_t STM23IP::send_cmd(std::string cmd, const int num_retries) {
     uint8_t* cmd_to_send;
     size_t cmd_size;
     
     str_to_eSCL(cmd,cmd_to_send,cmd_size);
     
     // get revision number, check comms with motor
-    ssize_t bytes_sent;
+    ssize_t bytes_sent = -1;
     int attempts = 0;
-    while((bytes_sent = send(sockfd,cmd_to_send,cmd_size,0)) < 0 && attempts <= num_retries) {
+    while(bytes_sent < 0 && attempts <= num_retries) {
+        bytes_sent = send(sockfd,cmd_to_send,cmd_size,0);
         ++attempts;
     }
     

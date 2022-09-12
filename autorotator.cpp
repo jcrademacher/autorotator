@@ -83,19 +83,30 @@ int _main(int argc, char *argv[]) {
     int ipart;
     int fpart;
 
+    std::string input, eSCL_cmd;
+    std::string::size_type sz;
     float angle;
-    bool input_failed;
+    bool is_SCL_cmd, input_failed, contains_param;
+
+    STM23IP_Status_t status;
 
     while(true) {
         input_failed = false;
-        std::cout << "Enter an angle: ";
-        
-        if(!(std::cin >> angle)) {
-            std::cout << "Please enter numbers only" << std::endl;
-            std::cin.clear();
-		    std::cin.ignore(10000, '\n');
+        contains_param = false;
+        std::cout << "Enter an angle or eSCL command: ";
+        std::cin >> input;
 
-            input_failed = true;
+        try {
+            angle = stof(input,&sz);
+            is_SCL_cmd = false;
+        }
+        catch(...) {
+            eSCL_cmd = input;
+            is_SCL_cmd = true;
+
+            if(eSCL_cmd.substr(2,std::string::npos).length() > 0) {
+                contains_param = true;
+            }
         }
 
         if(angle > 90 || angle < -90) {
@@ -103,7 +114,7 @@ int _main(int argc, char *argv[]) {
             input_failed = true;
         }
 
-        if(!input_failed) {
+        if(!input_failed && !is_SCL_cmd) {
             std::cout << boost::format("Positioning autorotator to %.1f degrees...") % angle << std::endl;
             ipart = ((int)round(angle*10.0))/10;
             fpart = abs((int)(round((angle - ipart)*10.0)));
@@ -117,6 +128,23 @@ int _main(int argc, char *argv[]) {
 
             angle_str.str("");
             angle_str.clear();
+        }
+        else if(is_SCL_cmd) {
+            std::string resp;
+            if(contains_param) {
+                status = motor->send_cmd(eSCL_cmd);
+            }
+            else {
+                status = motor->send_recv_cmd(eSCL_cmd, resp);
+            }
+
+            if(status == STM23IP_OK) {
+                std::cout << "eSCL command sent" << std::endl;
+            }
+
+            if(resp.length() > 0) {
+                std::cout << boost::format("Received response from drive: %s") % resp << std::endl;
+            }
         }
     }
 
