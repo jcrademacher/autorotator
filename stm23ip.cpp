@@ -93,7 +93,7 @@ STM23IP::STM23IP(std::string ip_address) {
 
     setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 
-    if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&servaddr,(socklen_t *)&addr_len)) < 0) {
+    if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
         perror("Receive timeout, failed to initialize motor");
         exit(EXIT_FAILURE);
     }
@@ -128,7 +128,7 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp) {
     addr_len = sizeof(servaddr);
     uint8_t recv_buf[MAX_RECV_BUF_SIZE];
 
-    if((bytes_recvd = recvfrom(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,MSG_WAITALL,(struct sockaddr *)&servaddr,(socklen_t *)&addr_len)) < 0) {
+    if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
         perror("Receive timeout");
         return STM23IP_TIMEOUT;
     }
