@@ -118,21 +118,21 @@ int _main(int argc, char *argv[]) {
     std::string input, eSCL_cmd;
     std::string::size_type sz;
     float angle;
-    bool is_SCL_cmd, input_failed, contains_param;
+    bool is_eSCL_cmd, input_failed, contains_param;
 
     while(true) {
         input_failed = false;
         contains_param = false;
-        std::cout << "Enter an angle or eSCL command: ";
+        std::cout << "Enter an angle or SP command: ";
         std::cin >> input;
 
         try {
             angle = stof(input,&sz);
-            is_SCL_cmd = false;
+            is_eSCL_cmd = false;
         }
         catch(...) {
             eSCL_cmd = input;
-            is_SCL_cmd = true;
+            is_eSCL_cmd = true;
             
             if(eSCL_cmd.length() < 2) {
                 input_failed = true;
@@ -142,15 +142,25 @@ int _main(int argc, char *argv[]) {
             }
         }
 
-        if(angle > 90 || angle < -90) {
+        if(!is_eSCL_cmd && (angle > 90 || angle < -90)) {
             std::cout << "Angle must be between -90 and +90 degrees" << std::endl;
             input_failed = true;
+
+            continue;
         }
 
-        if(!input_failed && !is_SCL_cmd) {
-            std::cout << boost::format("Positioning autorotator to %.1f degrees...") % angle << std::endl;
-            ipart = ((int)round(angle*10.0))/10;
-            fpart = abs((int)(round((angle - ipart)*10.0)));
+        if(!input_failed && !is_eSCL_cmd) {
+            int32_t di_pos = (int32_t) round(angle / PULLEY_RATIO * ((double)DEFAULT_EG) / 360.0); 
+            double setting_angle = ((double)di_pos) * 360.0 / ((double)DEFAULT_EG) * PULLEY_RATIO;
+
+            std::cout << boost::format("Positioning autorotator to %.1f degrees...") % setting_angle << std::endl; 
+
+            // tell motor to move to desired position
+            motor->send_cmd(CMD_SET_MOVE_POS,(double)di_pos);
+            motor->send_cmd(CMD_FEED_TO_POS);
+
+            ipart = ((int)round(setting_angle*10.0))/10;
+            fpart = abs((int)(round((setting_angle - ipart)*10.0)));
 
             angle_str << boost::format("%d,%1d") % ipart % fpart;
             exec_to_call = exec;
@@ -162,10 +172,16 @@ int _main(int argc, char *argv[]) {
             angle_str.str("");
             angle_str.clear();
         }
-        else if(is_SCL_cmd && !input_failed) {
+        else if(is_eSCL_cmd && !input_failed) {
             std::string resp;
+    
             if(contains_param) {
-                status = motor->send_cmd(eSCL_cmd);
+                if(eSCL_cmd.compare(CMD_SET_POSITION) >= 0) {
+                    status = motor->send_cmd(eSCL_cmd);
+                }
+                else {
+                    std::cout << "WARNING: Will not send eSCL 'set' commands except SP" << std::endl; 
+                }
             }
             else {
                 status = motor->send_recv_cmd(eSCL_cmd, resp);

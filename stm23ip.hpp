@@ -8,7 +8,7 @@
 #include <arpa/inet.h> 
 #include <netinet/in.h> 
 
-#define MAX_RECV_BUF_SIZE 10
+#define MAX_RECV_BUF_SIZE 20
 #define UDP_MOTOR_PORT 7775
 #define TCP_MOTOR_PORT 7776
 
@@ -20,6 +20,7 @@
 #define CMD_SET_DECELERATION "DE"
 #define CMD_SET_POSITION "SP"
 #define CMD_FEED_TO_POS "FP"
+#define CMD_SET_MOVE_POS "DI"
 
 typedef enum {
     STM23IP_OK = 0,
@@ -31,8 +32,12 @@ class STM23IP {
     public:
         STM23IP(std::string ip_address);
 
-        STM23IP_Status_t send_recv_cmd(std::string cmd, std::string& resp, double param=-1, const int num_retries=0);
-        STM23IP_Status_t send_cmd(std::string cmd, double param=-1, const int num_retries=0);
+        STM23IP_Status_t send_recv_cmd(std::string cmd, std::string& resp, double param);
+        STM23IP_Status_t send_recv_cmd(std::string cmd, std::string& resp);
+        
+        STM23IP_Status_t send_cmd(std::string cmd, double param);
+        STM23IP_Status_t send_cmd(std::string cmd);
+        
         STM23IP_Status_t enable();
         STM23IP_Status_t disable();
         STM23IP_Status_t alarm_reset();

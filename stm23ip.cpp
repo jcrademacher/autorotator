@@ -31,8 +31,23 @@ void STM23IP::eSCL_to_str(std::string& response, uint8_t* eSCL_resp, size_t eSCL
 }
 
 double STM23IP::eSCL_read_code(std::string cmd) {
-    size_t equal_i = cmd.find("=");
-    return stod(cmd.substr(equal_i+1,std::string::npos));
+    size_t parse_i = cmd.find("=");
+
+    if(parse_i == std::string::npos) {
+        parse_i = 1;
+    }
+
+    double retval;
+
+    try {
+        retval = stod(cmd.substr(parse_i+1,std::string::npos));
+    }
+    catch(const std::exception& e) {
+        std::cout << e.what() << std::endl;
+        throw;
+    }
+
+    return retval;
 }
 
 STM23IP::STM23IP(std::string ip_address) { 
@@ -95,9 +110,17 @@ STM23IP::~STM23IP() {
     close(sockfd);
 }
 
-STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, double param, const int num_retries) {
+STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, double param) {
+    std::string param_str = boost::lexical_cast<std::string>(param);
+    cmd = cmd + param_str;
+    
+    return this->send_recv_cmd(cmd,resp);
+}
+
+STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp) {
     STM23IP_Status_t status;
-    if((status=this->send_cmd(cmd,param,num_retries)) != STM23IP_OK) {
+
+    if((status=this->send_cmd(cmd)) != STM23IP_OK) {
         return status;
     }
 
@@ -114,24 +137,21 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, doub
     return STM23IP_OK;
 }
 
-STM23IP_Status_t STM23IP::send_cmd(std::string cmd, double param, const int num_retries) {
+STM23IP_Status_t STM23IP::send_cmd(std::string cmd, double param) {
+    std::string param_str = boost::lexical_cast<std::string>(param);
+    cmd = cmd + param_str;
+
+    return this->send_cmd(cmd);
+}
+
+STM23IP_Status_t STM23IP::send_cmd(std::string cmd) {
     uint8_t* cmd_to_send;
     size_t cmd_size;
-    
-    if(param >= 0) {
-        std::string param_str = boost::lexical_cast<std::string>(param);
-        cmd = cmd + param_str;
-    }
 
     str_to_eSCL(cmd,cmd_to_send,cmd_size);
     
     // get revision number, check comms with motor
-    ssize_t bytes_sent = -1;
-    int attempts = 0;
-    while(bytes_sent < 0 && attempts <= num_retries) {
-        bytes_sent = send(sockfd,cmd_to_send,cmd_size,0);
-        ++attempts;
-    }
+    ssize_t bytes_sent = send(sockfd,cmd_to_send,cmd_size,0);
     
     if (bytes_sent < 0) {
         perror("Socket send failed");
