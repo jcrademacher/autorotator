@@ -14,6 +14,13 @@
 
 #define BIND_PORT 7777
 
+#define CMD_ELECTRONIC_GEARING "EG"
+#define CMD_SET_VELOCITY "VE"
+#define CMD_SET_ACCELERATION "AC"
+#define CMD_SET_DECELERATION "DE"
+#define CMD_SET_POSITION "SP"
+#define CMD_FEED_TO_POS "FP"
+
 typedef enum {
     STM23IP_OK = 0,
     STM23IP_TIMEOUT = 1,
@@ -24,19 +31,19 @@ class STM23IP {
     public:
         STM23IP(std::string ip_address);
 
-        STM23IP_Status_t send_recv_cmd(std::string cmd, std::string& resp, const int num_retries=0);
-        STM23IP_Status_t send_cmd(std::string cmd, const int num_retries=0);
+        STM23IP_Status_t send_recv_cmd(std::string cmd, std::string& resp, double param=-1, const int num_retries=0);
+        STM23IP_Status_t send_cmd(std::string cmd, double param=-1, const int num_retries=0);
         STM23IP_Status_t enable();
         STM23IP_Status_t disable();
         STM23IP_Status_t alarm_reset();
 
-        static void eSCL_read_code(std::string cmd, long code);
+        static double eSCL_read_code(std::string cmd);
 
         ~STM23IP();
 
     private:
         int sockfd;
-        struct sockaddr_in cliaddr; 
+        struct sockaddr_in servaddr; 
 
         static void str_to_eSCL(std::string cmd, uint8_t*& eSCL_cmd, size_t &eSCL_cmd_size);
         static void eSCL_to_str(std::string& response, uint8_t* eSCL_resp, size_t eSCL_resp_size);

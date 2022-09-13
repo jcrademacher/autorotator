@@ -20,11 +20,11 @@
 
 #define ANGLE_FLAG "?"
 
-#define DEFAULT_EG_CMD "EG200"
-#define DEFAULT_AC_CMD "AC1"
-#define DEFAULT_DE_CMD "DE1"
-#define DEFAULT_VE_CMD "VE0.25"
-#define DEFAULT_SP_CMD "SP0"
+#define DEFAULT_EG 200
+#define DEFAULT_AC 0.5
+#define DEFAULT_DE 0.5
+#define DEFAULT_VE 0.25
+#define DEFAULT_SP 0
 
 namespace po = boost::program_options;
 
@@ -86,17 +86,27 @@ int _main(int argc, char *argv[]) {
     STM23IP* motor = new STM23IP(MOTOR_IP);
 
     // initialize electronic gearing, position, and speeds
-    while(status != STM23IP_OK) {
-        motor->send_cmd(DEFAULT_EG_CMD);
-        status = motor->send_recv_cmd("EG", resp);  // check if EG successful
-    }
-        
-    status = motor->send_cmd("SP0");
+    double param_resp = 0;
+    std::cout << "Initialiazing motor..." << std::endl;
+    
+    motor->send_cmd(CMD_ELECTRONIC_GEARING,DEFAULT_EG);
+    std::cout << boost::format("Set electronic gearing to %d steps/rev") % DEFAULT_EG << std::endl;
 
-    // WARNING: CHANGING THESE PARAMETERS AND OPERATING THE MOTOR MAY CAUSE PERMANENT MECHANICAL DAMAGE TO THE AUTOROTATOR
-    status = motor->send_cmd("AC1");
-    status = motor->send_cmd("DE1");
-    status = motor->send_cmd("VE0.25");
+    motor->send_cmd(CMD_SET_VELOCITY,DEFAULT_VE);
+    std::cout << boost::format("Set velocity to %d rev/sec") % DEFAULT_VE  << std::endl;
+
+    motor->send_cmd(CMD_SET_ACCELERATION,DEFAULT_AC);
+    std::cout << boost::format("Set acceleration to %d rev/sec/sec") % DEFAULT_AC << std::endl;
+
+    motor->send_cmd(CMD_SET_DECELERATION,DEFAULT_DE);
+    std::cout << boost::format("Set deceleration to %d rev/sec/sec") % DEFAULT_AC << std::endl;
+        
+    // status = motor->send_cmd("SP0");
+
+    // // WARNING: CHANGING THESE PARAMETERS AND OPERATING THE MOTOR MAY CAUSE PERMANENT MECHANICAL DAMAGE TO THE AUTOROTATOR
+    // status = motor->send_cmd("AC1");
+    // status = motor->send_cmd("DE1");
+    // status = motor->send_cmd("VE0.25");
 
     size_t angle_string_location = exec.find(ANGLE_FLAG);
     std::string exec_to_call;
@@ -123,8 +133,11 @@ int _main(int argc, char *argv[]) {
         catch(...) {
             eSCL_cmd = input;
             is_SCL_cmd = true;
-
-            if(eSCL_cmd.substr(2,std::string::npos).length() > 0) {
+            
+            if(eSCL_cmd.length() < 2) {
+                input_failed = true;
+            }
+            else if(eSCL_cmd.substr(2,std::string::npos).length() > 0) {
                 contains_param = true;
             }
         }
@@ -149,7 +162,7 @@ int _main(int argc, char *argv[]) {
             angle_str.str("");
             angle_str.clear();
         }
-        else if(is_SCL_cmd) {
+        else if(is_SCL_cmd && !input_failed) {
             std::string resp;
             if(contains_param) {
                 status = motor->send_cmd(eSCL_cmd);
@@ -158,16 +171,16 @@ int _main(int argc, char *argv[]) {
                 status = motor->send_recv_cmd(eSCL_cmd, resp);
             }
 
-            if(status == STM23IP_OK) {
-                std::cout << "eSCL command sent" << std::endl;
-            }
-            else {
+            if(status != STM23IP_OK) {
                 std::cout << "eSCL command could not be sent" << std::endl;
             }
 
             if(resp.length() > 0) {
                 std::cout << boost::format("Received response from drive: %s") % resp << std::endl;
             }
+        }
+        else {
+            std::cerr << "Error: ill-formed command" << std::endl;
         }
     }
 
