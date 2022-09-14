@@ -31,6 +31,8 @@ namespace po = boost::program_options;
 // function headers
 static int _main(int argc, char *argv[]);
 void signal_callback_handler(int signum);
+static void interactive_loop(STM23IP* motor, std::string& exec);
+static int32_t actual_angle(float& requested_angle);
 
 int main(int argc, char *argv[]) {                                                      
     try {                                                     
@@ -55,12 +57,13 @@ int _main(int argc, char *argv[]) {
 
     int start_angle, end_angle;
     double angle_step;
-    bool interactive;
+    bool interactive, zero;
     // clang-format off
     desc.add_options()
         ("help,h", "help message")
         ("exec,e", po::value<std::string>(&exec)->default_value("?"), exec_help.c_str())
         ("inter,i",po::bool_switch(&interactive)->default_value(false))
+        ("zero,z",po::bool_switch(&zero)->default_value(false))
         ("start-angle", po::value<int>(&start_angle)->default_value(-90), "angle in degrees to begin the rotations at")
         ("end-angle", po::value<int>(&end_angle)->default_value(90), "angle in degrees to end the rotations at")
         ("step", po::value<double>(&angle_step)->default_value(1.8), "angle in degrees to step sweeping from start-angle to end-angle")
@@ -89,6 +92,7 @@ int _main(int argc, char *argv[]) {
     double param_resp = 0;
     std::cout << "Initialiazing motor..." << std::endl;
     
+    // WARNING: CHANGING THESE PARAMETERS AND OPERATING THE MOTOR MAY CAUSE PERMANENT MECHANICAL DAMAGE TO THE AUTOROTATOR
     motor->send_cmd(CMD_ELECTRONIC_GEARING,DEFAULT_EG);
     std::cout << boost::format("Set electronic gearing to %d steps/rev") % DEFAULT_EG << std::endl;
 
@@ -100,14 +104,31 @@ int _main(int argc, char *argv[]) {
 
     motor->send_cmd(CMD_SET_DECELERATION,DEFAULT_DE);
     std::cout << boost::format("Set deceleration to %d rev/sec/sec") % DEFAULT_AC << std::endl;
-        
+    
+    if(zero) {
+        motor->send_cmd(CMD_SET_POSITION,0);
+        std::cout << "Zeroed autorotator at current position" << std::endl;
+    }
     // status = motor->send_cmd("SP0");
 
-    // // WARNING: CHANGING THESE PARAMETERS AND OPERATING THE MOTOR MAY CAUSE PERMANENT MECHANICAL DAMAGE TO THE AUTOROTATOR
+    // 
     // status = motor->send_cmd("AC1");
     // status = motor->send_cmd("DE1");
     // status = motor->send_cmd("VE0.25");
 
+    if(interactive)
+        interactive_loop(motor, exec);
+
+    return 0; 
+}
+
+void signal_callback_handler(int signum) {
+   std::cout << "Caught signal " << signum << std::endl;
+   // Terminate program
+   exit(signum);
+}
+
+void interactive_loop(STM23IP* motor, std::string& exec) {
     size_t angle_string_location = exec.find(ANGLE_FLAG);
     std::string exec_to_call;
     std::ostringstream angle_str;
@@ -119,6 +140,8 @@ int _main(int argc, char *argv[]) {
     std::string::size_type sz;
     float angle;
     bool is_eSCL_cmd, input_failed, contains_param;
+
+    STM23IP_Status_t status = STM23IP_ERROR;
 
     while(true) {
         input_failed = false;
@@ -150,8 +173,8 @@ int _main(int argc, char *argv[]) {
         }
 
         if(!input_failed && !is_eSCL_cmd) {
-            int32_t di_pos = (int32_t) round(angle / PULLEY_RATIO * ((double)DEFAULT_EG) / 360.0); 
-            double setting_angle = ((double)di_pos) * 360.0 / ((double)DEFAULT_EG) * PULLEY_RATIO;
+            int32_t di_pos = actual_angle(angle);
+            float setting_angle = angle;
 
             std::cout << boost::format("Positioning autorotator to %.1f degrees...") % setting_angle << std::endl; 
 
@@ -199,12 +222,11 @@ int _main(int argc, char *argv[]) {
             std::cerr << "Error: ill-formed command" << std::endl;
         }
     }
-
-    return 0; 
 }
 
-void signal_callback_handler(int signum) {
-   std::cout << "Caught signal " << signum << std::endl;
-   // Terminate program
-   exit(signum);
+int32_t actual_angle(float& requested_angle) {
+    int32_t di_pos = (int32_t) round((double)requested_angle / PULLEY_RATIO * ((double)DEFAULT_EG) / 360.0); 
+    requested_angle = ((float)di_pos) * 360.0 / ((float)DEFAULT_EG) * PULLEY_RATIO;
+
+    return di_pos;
 }
