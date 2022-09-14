@@ -26,6 +26,9 @@
 #define DEFAULT_VE 0.25
 #define DEFAULT_SP 0
 
+#define ANGLE_BOUND_UPPER 180
+#define ANGLE_BOUND_LOWER -180
+
 namespace po = boost::program_options;
 
 // function headers
@@ -55,17 +58,18 @@ int _main(int argc, char *argv[]) {
     std::string exec_help = std::string("executable to run at every rotation. To label the absolute rotation, place a '")+ std::string(ANGLE_FLAG)
         + std::string("' in the string and this program will replace it with the absolute rotation");
 
-    int start_angle, end_angle;
+    double start_angle, end_angle;
     double angle_step;
-    bool interactive, zero;
+    bool interactive, zero, motor_disable;
     // clang-format off
     desc.add_options()
         ("help,h", "help message")
         ("exec,e", po::value<std::string>(&exec)->default_value("?"), exec_help.c_str())
-        ("inter,i",po::bool_switch(&interactive)->default_value(false))
-        ("zero,z",po::bool_switch(&zero)->default_value(false))
-        ("start-angle", po::value<int>(&start_angle)->default_value(-90), "angle in degrees to begin the rotations at")
-        ("end-angle", po::value<int>(&end_angle)->default_value(90), "angle in degrees to end the rotations at")
+        ("inter,i",po::bool_switch(&interactive)->default_value(false),"Enable interactive mode")
+        ("zero,z",po::bool_switch(&zero)->default_value(false),"Set zero position as current position of autorotator")
+        ("disable,d",po::bool_switch(&motor_disable)->default_value(false),"Disable the motor. By default, the motor is enabled and the idling current is active, fixing the motor shaft in place. Set this flag if you want the motor shaft to not hold its position for zeroing.")
+        ("start-angle", po::value<double>(&start_angle)->default_value(-90), "angle in degrees to begin the rotations at")
+        ("end-angle", po::value<double>(&end_angle)->default_value(90), "angle in degrees to end the rotations at")
         ("step", po::value<double>(&angle_step)->default_value(1.8), "angle in degrees to step sweeping from start-angle to end-angle")
     ;
     // clang-format on
@@ -104,6 +108,18 @@ int _main(int argc, char *argv[]) {
 
     motor->send_cmd(CMD_SET_DECELERATION,DEFAULT_DE);
     std::cout << boost::format("Set deceleration to %d rev/sec/sec") % DEFAULT_AC << std::endl;
+
+    motor->send_cmd(CMD_IMMEDIATE_FORMAT_DEC);
+    std::cout << "Set immediate format to decimal" << std::endl;
+
+    if(motor_disable) {
+        motor->send_cmd(CMD_MOTOR_DISABLE);
+        std::cout << "Disabled motor" << std::endl;
+    }
+    else {
+        motor->send_cmd(CMD_MOTOR_ENABLE);
+        std::cout << "Enabled motor" << std::endl;
+    }
     
     if(zero) {
         motor->send_cmd(CMD_SET_POSITION,0);
@@ -118,6 +134,9 @@ int _main(int argc, char *argv[]) {
 
     if(interactive)
         interactive_loop(motor, exec);
+    else {
+
+    }
 
     return 0; 
 }
@@ -165,8 +184,8 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
             }
         }
 
-        if(!is_eSCL_cmd && (angle > 90 || angle < -90)) {
-            std::cout << "Angle must be between -90 and +90 degrees" << std::endl;
+        if(!is_eSCL_cmd && (angle > ANGLE_BOUND_UPPER || angle < ANGLE_BOUND_LOWER)) {
+            std::cout << boost::format("Angle must be between %d and +%d degrees") % ANGLE_BOUND_LOWER % ANGLE_BOUND_UPPER << std::endl;
             input_failed = true;
 
             continue;
@@ -181,6 +200,9 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
             // tell motor to move to desired position
             motor->send_cmd(CMD_SET_MOVE_POS,(double)di_pos);
             motor->send_cmd(CMD_FEED_TO_POS);
+
+            // blocks until position is met
+            STM23IP::poll_position(motor, di_pos);
 
             ipart = ((int)round(setting_angle*10.0))/10;
             fpart = abs((int)(round((setting_angle - ipart)*10.0)));
@@ -207,7 +229,12 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
                 }
             }
             else {
-                status = motor->send_recv_cmd(eSCL_cmd, resp);
+                if(eSCL_cmd.compare(CMD_MOTOR_DISABLE) == 0 || eSCL_cmd.compare(CMD_MOTOR_ENABLE) == 0) {
+                    status = motor->send_cmd(eSCL_cmd);
+                }
+                else {
+                    status = motor->send_recv_cmd(eSCL_cmd, resp);
+                }
             }
 
             if(status != STM23IP_OK) {

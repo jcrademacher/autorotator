@@ -21,6 +21,11 @@
 #define CMD_SET_POSITION "SP"
 #define CMD_FEED_TO_POS "FP"
 #define CMD_SET_MOVE_POS "DI"
+#define CMD_MOTOR_ENABLE "ME"
+#define CMD_MOTOR_DISABLE "MD"
+#define CMD_IMMEDIATE_FORMAT_DEC "IFD"
+#define CMD_IMMEDIATE_FORMAT_HEX "IFH"
+#define CMD_IMMEDIATE_POSITION "IP"
 
 typedef enum {
     STM23IP_OK = 0,
@@ -43,6 +48,11 @@ class STM23IP {
         STM23IP_Status_t alarm_reset();
 
         static double eSCL_read_code(std::string cmd);
+        static STM23IP_Status_t recv_cmd_loop(STM23IP* motor);
+
+        static STM23IP_Status_t poll_position(STM23IP* motor, int32_t pos);
+
+        int get_sockfd();
 
         ~STM23IP();
 

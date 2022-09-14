@@ -172,3 +172,50 @@ STM23IP_Status_t STM23IP::disable() {
 STM23IP_Status_t STM23IP::alarm_reset() {
     return this->send_cmd("AR");
 }
+
+int STM23IP::get_sockfd() {
+    return this->sockfd;
+}
+
+// spawn this function in thread
+STM23IP_Status_t STM23IP::recv_cmd_loop(STM23IP* motor) {
+    std::string resp;
+    int bytes_recvd, addr_len;
+    uint8_t recv_buf[MAX_RECV_BUF_SIZE];
+
+    int sockfd = motor->get_sockfd();
+
+    while(true) {
+        memset(&recv_buf,0,sizeof(recv_buf));
+
+        if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
+            perror("Receive timeout");
+            return STM23IP_TIMEOUT;
+        }
+
+        try {
+            eSCL_to_str(resp,recv_buf,bytes_recvd);
+        }
+        catch(std::exception& e) {
+            std::cerr << boost::format("Error: %s") % e.what() << std::endl;
+            return STM23IP_ERROR;
+        }
+
+        std::cout << std::endl << boost::format("Received response from drive: %s") % resp << std::endl;
+    }
+
+    return STM23IP_OK;
+}
+
+STM23IP_Status_t STM23IP::poll_position(STM23IP* motor, int32_t pos) {
+    int32_t immediate_pos;
+    std::string resp;
+    STM23IP_Status_t status;
+
+    do {
+        status = motor->send_recv_cmd(CMD_IMMEDIATE_POSITION, resp);
+        immediate_pos = (int32_t)round(eSCL_read_code(resp));
+    } while(immediate_pos != pos && status == STM23IP_OK);
+
+    return status;
+}
