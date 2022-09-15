@@ -10,6 +10,8 @@ Install the required libraries and packages:
 **Homebrew (Ubuntu, WSL, MacOS X):** `brew install boost cmake` <br>
 **Linux Native (Ubuntu, WSL)**: `sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev`
 
+You must also have installed the UHD binaries from source. See [Building and Installing UHD from source](https://files.ettus.com/manual/page_build_guide.html) for more information.
+
 ## Installation
 
 This project uses the CMake build system. To create the executable, in the project root, run <br>
