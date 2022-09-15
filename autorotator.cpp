@@ -35,7 +35,8 @@ namespace po = boost::program_options;
 static int _main(int argc, char *argv[]);
 void signal_callback_handler(int signum);
 static void interactive_loop(STM23IP* motor, std::string& exec);
-static int32_t actual_angle(float& requested_angle);
+static int32_t actual_angle(double& requested_angle);
+static void call_exec(std::string exec, double angle);
 
 int main(int argc, char *argv[]) {                                                      
     try {                                                     
@@ -58,19 +59,20 @@ int _main(int argc, char *argv[]) {
     std::string exec_help = std::string("executable to run at every rotation. To label the absolute rotation, place a '")+ std::string(ANGLE_FLAG)
         + std::string("' in the string and this program will replace it with the absolute rotation");
 
-    double start_angle, end_angle;
+    double start_angle, end_angle, angle;
     double angle_step;
     bool interactive, zero, motor_disable;
     // clang-format off
     desc.add_options()
         ("help,h", "help message")
-        ("exec,e", po::value<std::string>(&exec)->default_value("?"), exec_help.c_str())
+        ("exec,e", po::value<std::string>(&exec)->default_value(""), exec_help.c_str())
         ("inter,i",po::bool_switch(&interactive)->default_value(false),"Enable interactive mode")
         ("zero,z",po::bool_switch(&zero)->default_value(false),"Set zero position as current position of autorotator")
         ("disable,d",po::bool_switch(&motor_disable)->default_value(false),"Disable the motor. By default, the motor is enabled and the idling current is active, fixing the motor shaft in place. Set this flag if you want the motor shaft to not hold its position for zeroing.")
         ("start-angle", po::value<double>(&start_angle)->default_value(-90), "angle in degrees to begin the rotations at")
         ("end-angle", po::value<double>(&end_angle)->default_value(90), "angle in degrees to end the rotations at")
         ("step", po::value<double>(&angle_step)->default_value(1.8), "angle in degrees to step sweeping from start-angle to end-angle")
+        ("angle",po::value<double>(&angle), "angle in degrees to immediately set to and exit")
     ;
     // clang-format on
     po::variables_map vm;
@@ -89,7 +91,6 @@ int _main(int argc, char *argv[]) {
     STM23IP_Status_t status = STM23IP_ERROR;
     std::string resp;
 
-    std::cout << "Connecting to motor..." << std::endl;
     STM23IP* motor = new STM23IP(MOTOR_IP);
 
     // initialize electronic gearing, position, and speeds
@@ -115,6 +116,8 @@ int _main(int argc, char *argv[]) {
     if(motor_disable) {
         motor->send_cmd(CMD_MOTOR_DISABLE);
         std::cout << "Disabled motor" << std::endl;
+
+        return 0;
     }
     else {
         motor->send_cmd(CMD_MOTOR_ENABLE);
@@ -135,7 +138,39 @@ int _main(int argc, char *argv[]) {
     if(interactive)
         interactive_loop(motor, exec);
     else {
+        int32_t di_pos;
+        if(vm.count("angle")) {
+            di_pos = actual_angle(angle);
+            std::cout << boost::format("Positioning autorotator to %.1f degrees...") % angle << std::endl;
 
+            // tell motor to move to desired position
+            motor->send_cmd(CMD_SET_MOVE_POS,(double)di_pos);
+            motor->send_cmd(CMD_FEED_TO_POS);
+
+            STM23IP::poll_position(motor, di_pos);
+
+            if(exec.length() > 0) {
+                call_exec(exec, angle);
+            }
+        }
+        else {
+            double setting_angle;
+            for(double cur_ang = start_angle; cur_ang < end_angle; cur_ang += angle_step) {
+                setting_angle = cur_ang;
+                di_pos = actual_angle(setting_angle);
+                std::cout << boost::format("Positioning autorotator to %.1f degrees...") % setting_angle << std::endl;
+
+                // tell motor to move to desired position
+                motor->send_cmd(CMD_SET_MOVE_POS,(double)di_pos);
+                motor->send_cmd(CMD_FEED_TO_POS);
+
+                STM23IP::poll_position(motor, di_pos);
+
+                if(exec.length() > 0) {
+                    call_exec(exec, angle);
+                }
+            }
+        }
     }
 
     return 0; 
@@ -148,16 +183,9 @@ void signal_callback_handler(int signum) {
 }
 
 void interactive_loop(STM23IP* motor, std::string& exec) {
-    size_t angle_string_location = exec.find(ANGLE_FLAG);
-    std::string exec_to_call;
-    std::ostringstream angle_str;
-
-    int ipart;
-    int fpart;
-
     std::string input, eSCL_cmd;
     std::string::size_type sz;
-    float angle;
+    double angle;
     bool is_eSCL_cmd, input_failed, contains_param;
 
     STM23IP_Status_t status = STM23IP_ERROR;
@@ -193,9 +221,8 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
 
         if(!input_failed && !is_eSCL_cmd) {
             int32_t di_pos = actual_angle(angle);
-            float setting_angle = angle;
 
-            std::cout << boost::format("Positioning autorotator to %.1f degrees...") % setting_angle << std::endl; 
+            std::cout << boost::format("Positioning autorotator to %.1f degrees...") % angle << std::endl; 
 
             // tell motor to move to desired position
             motor->send_cmd(CMD_SET_MOVE_POS,(double)di_pos);
@@ -204,18 +231,9 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
             // blocks until position is met
             STM23IP::poll_position(motor, di_pos);
 
-            ipart = ((int)round(setting_angle*10.0))/10;
-            fpart = abs((int)(round((setting_angle - ipart)*10.0)));
-
-            angle_str << boost::format("%d,%1d") % ipart % fpart;
-            exec_to_call = exec;
-            exec_to_call.replace(angle_string_location, std::string::npos, angle_str.str());
-
-            //std::cout << boost::format("%.1f") % angle << boost::format(" | %s") % angle_str.str() << std::endl;
-            system(exec_to_call.c_str());
-
-            angle_str.str("");
-            angle_str.clear();
+            if(exec.length() > 0) {
+                call_exec(exec,angle);
+            }
         }
         else if(is_eSCL_cmd && !input_failed) {
             std::string resp;
@@ -251,9 +269,31 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
     }
 }
 
-int32_t actual_angle(float& requested_angle) {
+int32_t actual_angle(double& requested_angle) {
     int32_t di_pos = (int32_t) round((double)requested_angle / PULLEY_RATIO * ((double)DEFAULT_EG) / 360.0); 
     requested_angle = ((float)di_pos) * 360.0 / ((float)DEFAULT_EG) * PULLEY_RATIO;
 
     return di_pos;
+}
+
+void call_exec(std::string exec, double angle) {
+    size_t angle_string_location = exec.find(ANGLE_FLAG);
+    std::string exec_to_call;
+    std::ostringstream angle_str;
+
+    int ipart;
+    int fpart;
+
+    ipart = ((int)round(angle*10.0))/10;
+    fpart = abs((int)(round((angle - ipart)*10.0)));
+
+    angle_str << boost::format("%d,%1d") % ipart % fpart;
+    exec_to_call = exec;
+    exec_to_call.replace(angle_string_location, std::string::npos, angle_str.str());
+
+    std::cout << "Calling executable..." << std::endl;
+    system(exec_to_call.c_str());
+
+    angle_str.str("");
+    angle_str.clear();
 }

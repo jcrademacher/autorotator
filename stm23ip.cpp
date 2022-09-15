@@ -43,7 +43,7 @@ double STM23IP::eSCL_read_code(std::string cmd) {
         retval = stod(cmd.substr(parse_i+1,std::string::npos));
     }
     catch(const std::exception& e) {
-        std::cout << e.what() << std::endl;
+        std::cout << STM23IP_ERR_STR << e.what() << std::endl;
         throw;
     }
 
@@ -51,9 +51,14 @@ double STM23IP::eSCL_read_code(std::string cmd) {
 }
 
 STM23IP::STM23IP(std::string ip_address) { 
-    // Creating socket file descriptor 
+    // Creating socket file descriptor
+    std::cout << STM23IP_INFO_STR << "Connecting to motor..." << std::endl;
+
+    std::string err_msg;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { 
-        perror("Socket creation failed"); 
+        err_msg = "Socket creation failed";
+        err_msg = STM23IP_ERR_STR + err_msg;
+        perror(err_msg.c_str()); 
         exit(EXIT_FAILURE); 
     } 
 
@@ -65,7 +70,9 @@ STM23IP::STM23IP(std::string ip_address) {
     servaddr.sin_addr.s_addr = inet_addr(ip_address.c_str());
 
     if(connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0) {
-        perror("Could not connect");
+        err_msg = "Could not connect";
+        err_msg = STM23IP_ERR_STR+err_msg;
+        perror(err_msg.c_str());
         exit(EXIT_FAILURE);
     } 
     
@@ -79,7 +86,9 @@ STM23IP::STM23IP(std::string ip_address) {
     // get revision number, check comms with motor
     ssize_t bytes_sent;
     if((bytes_sent = send(sockfd,cmd_to_send,cmd_size,0)) < 0) {
-        perror("Socket send failure");
+        err_msg = "Socket send failure";
+        err_msg = STM23IP_ERR_STR+err_msg;
+        perror(err_msg.c_str());
         exit(EXIT_FAILURE); 
     }
 
@@ -94,7 +103,9 @@ STM23IP::STM23IP(std::string ip_address) {
     setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 
     if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
-        perror("Receive timeout, failed to initialize motor");
+        err_msg = "Receive timeout, failed to initialize motor";
+        err_msg = STM23IP_ERR_STR + err_msg;
+        perror(err_msg.c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -103,7 +114,7 @@ STM23IP::STM23IP(std::string ip_address) {
 
     float firmware_version = ((float)stoi(resp.substr(cmd.length()+1))) / 100.0;
 
-    std::cout << boost::format("STM23IP Connected. Firmware version: %3.2f") % firmware_version << std::endl;
+    std::cout << STM23IP_INFO_STR << boost::format("Motor Connected. Firmware version: %3.2f") % firmware_version << std::endl;
 }
 
 STM23IP::~STM23IP() {
@@ -119,6 +130,7 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp, doub
 
 STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp) {
     STM23IP_Status_t status;
+    std::string msg;
 
     if((status=this->send_cmd(cmd)) != STM23IP_OK) {
         return status;
@@ -129,11 +141,14 @@ STM23IP_Status_t STM23IP::send_recv_cmd(std::string cmd, std::string& resp) {
     uint8_t recv_buf[MAX_RECV_BUF_SIZE];
 
     if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
-        perror("Receive timeout");
+        msg = "Receive timeout";
+        msg = STM23IP_WARN_STR+msg;
+        perror(msg.c_str());
         return STM23IP_TIMEOUT;
     }
 
     eSCL_to_str(resp,recv_buf,bytes_recvd);
+
     return STM23IP_OK;
 }
 
@@ -147,6 +162,7 @@ STM23IP_Status_t STM23IP::send_cmd(std::string cmd, double param) {
 STM23IP_Status_t STM23IP::send_cmd(std::string cmd) {
     uint8_t* cmd_to_send;
     size_t cmd_size;
+    std::string err_msg;
 
     str_to_eSCL(cmd,cmd_to_send,cmd_size);
     
@@ -154,7 +170,9 @@ STM23IP_Status_t STM23IP::send_cmd(std::string cmd) {
     ssize_t bytes_sent = send(sockfd,cmd_to_send,cmd_size,0);
     
     if (bytes_sent < 0) {
-        perror("Socket send failed");
+        err_msg = "Socket send failure";
+        err_msg = STM23IP_ERR_STR+err_msg;
+        perror(err_msg.c_str());
         return STM23IP_ERROR;
     }
 
@@ -179,7 +197,7 @@ int STM23IP::get_sockfd() {
 
 // spawn this function in thread
 STM23IP_Status_t STM23IP::recv_cmd_loop(STM23IP* motor) {
-    std::string resp;
+    std::string resp, msg;
     int bytes_recvd, addr_len;
     uint8_t recv_buf[MAX_RECV_BUF_SIZE];
 
@@ -189,7 +207,9 @@ STM23IP_Status_t STM23IP::recv_cmd_loop(STM23IP* motor) {
         memset(&recv_buf,0,sizeof(recv_buf));
 
         if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
-            perror("Receive timeout");
+            msg = "Receive timeout";
+            msg = STM23IP_WARN_STR+msg;
+            perror(msg.c_str());
             return STM23IP_TIMEOUT;
         }
 
@@ -197,11 +217,11 @@ STM23IP_Status_t STM23IP::recv_cmd_loop(STM23IP* motor) {
             eSCL_to_str(resp,recv_buf,bytes_recvd);
         }
         catch(std::exception& e) {
-            std::cerr << boost::format("Error: %s") % e.what() << std::endl;
+            std::cerr << STM23IP_ERR_STR << e.what() << std::endl;
             return STM23IP_ERROR;
         }
 
-        std::cout << std::endl << boost::format("Received response from drive: %s") % resp << std::endl;
+        std::cout << std::endl << STM23IP_INFO_STR << boost::format("Received response from drive: %s") % resp << std::endl;
     }
 
     return STM23IP_OK;
