@@ -33,6 +33,8 @@ Use `./autorotator --help` for more information. There are 3 modes:
 
 With the `--exec` flag, you can pass an executable that the program will system-call at each angle, in any of the modes listed above. If `--exec` is not given, nothing is done at each angle. 
 
+Additionally, if the argument to the `--exec` flag contains a **question mark** ("?"), then the program will string-replace the question mark with the angle that the executable was run at, with the angle rounded to the nearest **tenth of a degree** and the decimal point replaced with a comma, to prevent file extension collisions. This is particularly useful for running data-acquisition commands where you would like to specify in the executable what angle the executable was run at.
+
 ### Zeroing
 
 Zeroing must first be manually performed, either with the motor powered off or the motor powered on and disabled. Then, run the program with the `--zero` flag to set the zero angle at the current position. This can also be performed by running `SP0` as an eSCL *set* command in the interactive mode. 
