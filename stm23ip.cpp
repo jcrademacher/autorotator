@@ -11,6 +11,7 @@
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
 #include <netinet/in.h> 
+#include <netinet/tcp.h>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -95,12 +96,41 @@ STM23IP::STM23IP(std::string ip_address) {
     int bytes_recvd;
     uint8_t recv_buf[MAX_RECV_BUF_SIZE];
 
-    struct timeval timeout;
+    struct timeval timeout; 
 
     timeout.tv_sec = 5;
     timeout.tv_usec = 0;
 
-    setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
+    if(setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout))) {
+        err_msg = "Socket timeout setting error";
+        err_msg = STM23IP_ERR_STR + err_msg;
+        perror(err_msg.c_str());
+    }
+
+    // set TCP keepalive
+    int flags = 1;
+
+    if(setsockopt(sockfd,SOL_SOCKET,SO_KEEPALIVE,(void *)&flags,sizeof(flags))) {
+        err_msg = "Socket keepalive setting error";
+        err_msg = STM23IP_ERR_STR + err_msg;
+        perror(err_msg.c_str());
+    }
+
+    // set TCP keepidle
+    int keepidle = 5; // 10 seconds before keepalive is sent
+    if(setsockopt(sockfd,SOL_TCP,TCP_KEEPIDLE,(void *)&keepidle,sizeof(keepidle))) {
+        err_msg = "TCP keepidle setting error";
+        err_msg = STM23IP_ERR_STR + err_msg;
+        perror(err_msg.c_str());
+    }
+
+    // set TCP keepints
+    int keepint = keepidle; // 1 seconds between keepalives
+    if(setsockopt(sockfd,SOL_TCP,TCP_KEEPINTVL,(void *)&keepint,sizeof(keepint))) {
+        err_msg = "TCP keepints setting error";
+        err_msg = STM23IP_ERR_STR + err_msg;
+        perror(err_msg.c_str());
+    }
 
     if((bytes_recvd = recv(sockfd,(char *)recv_buf,MAX_RECV_BUF_SIZE,0)) < 0) {
         err_msg = "Receive timeout, failed to initialize motor";
