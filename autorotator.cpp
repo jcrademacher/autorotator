@@ -3,12 +3,6 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <cmath>
-#include <uhd/exception.hpp>
-#include <uhd/types/tune_request.hpp>
-#include <uhd/usrp/multi_usrp.hpp>
-#include <uhd/utils/safe_main.hpp>
-#include <uhd/utils/static.hpp>
-#include <uhd/utils/thread.hpp>
 #include <signal.h>
 
 #include "stm23ip.hpp"
