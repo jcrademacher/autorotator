@@ -289,7 +289,9 @@ void call_exec(std::string exec, double angle) {
 
     angle_str << boost::format("%d,%1d") % ipart % fpart;
     exec_to_call = exec;
-    exec_to_call.replace(angle_string_location, 1, angle_str.str());
+    
+    if(angle_string_location != std::string::npos)
+        exec_to_call.replace(angle_string_location, 1, angle_str.str());
 
     std::cout << boost::format("Calling executable: %s") % exec_to_call << std::endl;
     system(exec_to_call.c_str());
