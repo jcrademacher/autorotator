@@ -161,7 +161,7 @@ int _main(int argc, char *argv[]) {
                 STM23IP::poll_position(motor, di_pos);
 
                 if(exec.length() > 0) {
-                    call_exec(exec, angle);
+                    call_exec(exec, setting_angle);
                 }
             }
         }
@@ -264,8 +264,8 @@ void interactive_loop(STM23IP* motor, std::string& exec) {
 }
 
 int32_t actual_angle(double& requested_angle) {
-    int32_t di_pos = (int32_t) round((double)requested_angle / PULLEY_RATIO * ((double)DEFAULT_EG) / 360.0); 
-    requested_angle = ((float)di_pos) * 360.0 / ((float)DEFAULT_EG) * PULLEY_RATIO;
+    int32_t di_pos = (int32_t) round((double)requested_angle / double(PULLEY_RATIO) * ((double)DEFAULT_EG) / 360.0); 
+    requested_angle = ((double)di_pos) * 360.0 / ((double)DEFAULT_EG) * double(PULLEY_RATIO);
 
     return di_pos;
 }
