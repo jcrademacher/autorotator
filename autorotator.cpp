@@ -14,11 +14,12 @@
 
 #define ANGLE_FLAG "?"
 
-#define DEFAULT_EG 200
-#define DEFAULT_AC 0.5
-#define DEFAULT_DE 0.5
-#define DEFAULT_VE 0.25
+#define DEFAULT_EG 20000
+#define DEFAULT_AC 0.2
+#define DEFAULT_DE 0.2
+#define DEFAULT_VE 0.1
 #define DEFAULT_SP 0
+#define DEFAULT_CC 5
 
 #define ANGLE_BOUND_UPPER 180
 #define ANGLE_BOUND_LOWER -180
@@ -102,7 +103,7 @@ int _main(int argc, char *argv[]) {
     std::cout << boost::format("Set acceleration to %d rev/sec/sec") % DEFAULT_AC << std::endl;
 
     motor->send_cmd(CMD_SET_DECELERATION,DEFAULT_DE);
-    std::cout << boost::format("Set deceleration to %d rev/sec/sec") % DEFAULT_AC << std::endl;
+    std::cout << boost::format("Set deceleration to %d rev/sec/sec") % DEFAULT_DE << std::endl;
 
     motor->send_cmd(CMD_IMMEDIATE_FORMAT_DEC);
     std::cout << "Set immediate format to decimal" << std::endl;
