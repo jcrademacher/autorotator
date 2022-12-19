@@ -15,8 +15,8 @@
 #define ANGLE_FLAG "?"
 
 #define DEFAULT_EG 20000
-#define DEFAULT_AC 0.2
-#define DEFAULT_DE 0.2
+#define DEFAULT_AC 1
+#define DEFAULT_DE 1
 #define DEFAULT_VE 0.1
 #define DEFAULT_SP 0
 #define DEFAULT_CC 5
